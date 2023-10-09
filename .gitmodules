@@ -1,0 +1,6 @@
+[submodule "Pxxxx/wg21-mpark"]
+	path = Pxxxx/wg21-mpark
+	url = git@github.com:ericniebler/wg21-mpark.git
+[submodule "wg21-mpark"]
+	path = wg21-mpark
+	url = git@github.com:ericniebler/wg21-mpark.git
