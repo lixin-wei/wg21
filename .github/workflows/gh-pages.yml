@@ -48,14 +48,14 @@ jobs:
 
       - name: install dependencies
         run: |
-          make -C Pxxxx update
+          make -C P2999 update
 
       - name: build html
         run: |
-          make -C Pxxxx html
+          make -C P2999 html
       - name: build pdf
         run: |
-          make -C Pxxxx pdf
+          make -C P2999 pdf
 
       - name: Setup Pages
         uses: actions/configure-pages@v2
@@ -63,7 +63,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
-          path: Pxxxx/generated
+          path: P2999/generated
 
   deploy:
     environment:
