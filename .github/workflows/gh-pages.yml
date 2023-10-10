@@ -48,15 +48,15 @@ jobs:
 
       - name: install dependencies
         run: |
-          make update-dependencies
-          make update
+          make -C Pxxxx update-dependencies
+          make -C Pxxxx update
 
       - name: build html
         run: |
-          make html
+          make -C Pxxxx html
       - name: build pdf
         run: |
-          make pdf
+          make -C Pxxxx pdf
 
       - name: Setup Pages
         uses: actions/configure-pages@v2
