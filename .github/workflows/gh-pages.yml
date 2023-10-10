@@ -48,7 +48,6 @@ jobs:
 
       - name: install dependencies
         run: |
-          make -C Pxxxx update-dependencies
           make -C Pxxxx update
 
       - name: build html
