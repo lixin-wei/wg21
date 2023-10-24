@@ -53,9 +53,10 @@ jobs:
       - name: build html
         run: |
           make -C P2999 html
-      - name: build pdf
-        run: |
-          make -C P2999 pdf
+
+      # - name: build pdf
+      #   run: |
+      #     make -C P2999 pdf
 
       - name: Setup Pages
         uses: actions/configure-pages@v2
