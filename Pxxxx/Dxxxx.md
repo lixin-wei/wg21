@@ -1,3 +1,31 @@
+<style>
+p {text-align:justify}
+li {text-align:justify}
+blockquote.note
+{
+	background-color:#E0E0E0;
+	padding-left: 15px;
+	padding-right: 15px;
+	padding-top: 1px;
+	padding-bottom: 1px;
+}
+span.ednote:before {
+  content: "[Editorial note: ";
+  font-style: italic;
+}
+span.ednote:after {
+  content: " -- end note]";
+  font-style: italic;
+}
+span.ednote, span.ednote * {
+  color:blue !important;
+  margin-top: 0em;
+  margin-bottom: 0em;
+}
+ins, ins * {color:#00A000 !important}
+del, del * {color:#A00000 !important}
+</style>
+
 Improving diagnostics for sender expressions
 ============================================
 
@@ -101,41 +129,39 @@ We suggest that a similar change be made to the `completion_signatures_of_t` ali
 Proposed Wording
 ----------------
 
+<span class="ednote">The wording in this section assumes the adoption of [P2855R1](https://wg21.link/P2855R1).</span>
+
+
 Change [exec.syn] as follows:
 
-<blockquote>
-<pre>
+<blockquote><pre><code>
 ...
 
 template&lt;class Sndr, class<ins>\...</ins> Env <del>= empty_env</del>>
   concept sender_in = <em>see below</em>;
-
 \...
 
 template&lt;class Sndr, class<ins>\...</ins> Env <del>= empty_env</del>>
   requires sender_in&lt;Sndr, Env<ins>\...</ins>>
 using completion_signatures_of_t = call-result-t&lt;get_completion_signatures_t, Sndr, Env<ins>\...</ins>>;
-
 \...
-</pre>
-</blockquote>
+</code></pre></blockquote>
 
 
 Change [exec.snd.concepts] as follows:
 
-<blockquote>
-<pre>
+<blockquote><pre><code>
 template&lt;class Sndr, class<ins>...</ins> Env <del>= empty_env</del>>
   concept sender_in =
     sender&lt;Sndr> &&
+	<ins>(sizeof...(Env) <= 1)</ins>
     <ins>(</ins>queryable&lt;Env><ins> &&...)</ins> &&
-    requires (Sndr&& sndr, Env&& env) {
+    requires (Sndr&& sndr, Env&&<ins>...</ins> env) {
       { get_completion_signatures(
            std::forward&lt;Sndr>(sndr), std::forward&lt;Env>(env)<ins>...</ins>) }
         -> <em>valid-completion-signatures</em>;
     };
-</pre>
-</blockquote>
+</code></pre></blockquote>
 
 
 
@@ -150,7 +176,7 @@ We would like `get_completion_signatures(s)` to handle the case where `s` is awa
 
 3. Let *`is-awaitable`* be the following exposition-only concept:
 
-	<pre>
+	<pre><code>
 	template&lt;class T>
 	concept <em>await-suspend-result</em> = <em>see below</em>;
 	
@@ -167,7 +193,7 @@ We would like `get_completion_signatures(s)` to handle the case where `s` is awa
 	  requires (C (*fc)() noexcept, Promise&<ins>...</ins> p) {
 	    { GET-AWAITER(fc(), p<ins>...</ins>) } -> is-awaiter&lt;Promise<ins>...</ins>>;
 	  };
-	</pre>
+	</code></pre>
 
 	`await-suspend-result<T>` is `true` if and only if one of the following is `true`:
 
@@ -185,11 +211,11 @@ Change [exec.getcomplsigs] as follows:
 
 <blockquote>
 
-1. `get_completion_signatures` is a customization point object. Let `sndr` be an expression such that `decltype((sndr))` is `Sndr` <del>, and let `env` be an expression such that `decltype((env))` is `Env`</del>. <ins>Then `get_completion_aignatures<Sndr>` is expression-equivalent to:</ins>
+1. `get_completion_signatures` is a customization point object. Let `sndr` be an expression such that `decltype((sndr))` is `Sndr` <del>, and let `env` be an expression such that `decltype((env))` is `Env`</del>. <ins>Then `get_completion_aignatures(sndr)` is expression-equivalent to:</ins>
 
 	1. <ins>`remove_cvref_t<Sndr>::completion_signatures{}` if that expression is well-formed,</ins>
 
-	2. <ins>Otherwise, `tag_invoke_result_t<get_completion_signatures_t, Sndr>{}` if that expression is well-formed,</ins>
+	2. <ins>Otherwise, `decltype(sndr.get_completion_signatures()){}` if that expression is well-formed,</ins>
 
 	3. <ins>Otherwise, if `is-awaitable<Sndr>` is `true`, then:</ins>
 
@@ -206,7 +232,7 @@ Change [exec.getcomplsigs] as follows:
 
 	1. <ins>`remove_cvref_t<Sndr>::completion_signatures{}` if that expression is well-formed,</ins>
 
-	2. <ins>Otherwise, </ins> `tag_invoke_result_t<get_completion_signatures_t, Sndr, Env>{}` if that expression is well-formed,
+	2. <ins>Otherwise, </ins> `decltype(sndr.get_completion_signatures(env)){}` if that expression is well-formed,
 
     <!-- -->
 	2. <del>Otherwise, `remove_cvref_t<Sndr>::completion_signatures{}` if that expression is well-formed,</del>
@@ -220,9 +246,18 @@ Change [exec.getcomplsigs] as follows:
 
 	4. Otherwise, `get_completion_signatures(sndr, env)` is ill-formed.
 
-2. <ins></ins>
+3. <ins>Given a pack of subexpressions `e`, the expression `get_completion_signatures(e...)` is ill-formed if `sizeof...(e)` is less than `1` or greater than `2`.
 
-2. Let `rcvr` be an rvalue receiver of type `Rcvr`, and let `Sndr` be the type of a sender such that `sender_in<Sndr, env_of_t<Rcvr>>` is true. Let `Sigs...` be the template arguments of the `completion_signatures` specialization named by `completion_signatures_of_t<Sndr, env_of_t<Rcvr>>`. Let `CSO` be a completion function. If sender `Sndr` or its operation state cause the expression `CSO(rcvr, args...)` to be potentially evaluated ([basic.def.odr]) then there shall be a signature `Sig` in `Sigs...` such that `MATCHING-SIG(tag_t<CSO>(decltype(args)...), Sig)` is `true` ([exec.general]).
+4. <ins>If `completion_signatures_of_t<Sndr>` and `completion_signatures_of_t<Sndr, Env>` are both well-formed, they shall denote the same set of completion signatures, disregarding the order of signatures and rvalue reference qualification of arguments.</ins>
+
+5. Let `rcvr` be an rvalue receiver of type `Rcvr`, and let `Sndr` be the type of a sender such that `sender_in<Sndr, env_of_t<Rcvr>>` is true. Let `Sigs...` be the template arguments of the `completion_signatures` specialization named by `completion_signatures_of_t<Sndr, env_of_t<Rcvr>>`. Let `CSO` be a completion function. If sender `Sndr` or its operation state cause the expression `CSO(rcvr, args...)` to be potentially evaluated ([basic.def.odr]) then there shall be a signature `Sig` in `Sigs...` such that `MATCHING-SIG(tag_t<CSO>(decltype(args)...), Sig)` is `true` ([exec.general]).
 </blockquote>
 
 
+TODO: More
+
+
+Acknowlegments
+--------------
+
+We owe our thanks to Ville Voutilainen who first noticed that most sender expressions could be type-checked eagerly but are not by P2300R8.
