@@ -1,0 +1,451 @@
+% ********************************* HEADERS ***********************************
+\documentclass{article}
+\usepackage[top=.75in, bottom=.75in, left=.50in,right=.50in]{geometry}
+\usepackage{fancyhdr}
+\usepackage{titling}
+\pagestyle{fancy}
+\lhead{Remove return type deduction in std::apply}
+\rhead{\thepage}
+\usepackage{ulem}
+\usepackage{enumitem}
+\usepackage{color}
+\DeclareRobustCommand{\hlgreen}[1]{{\sethlcolor{green}\hl{#1}}}
+\newcommand*\justify{%
+  \fontdimen2\font=0.4em% interword space
+  \fontdimen3\font=0.2em% interword stretch
+  \fontdimen4\font=0.1em% interword shrink
+  \fontdimen7\font=0.1em% extra space
+  \hyphenchar\font=`\-% allowing hyphenation
+}
+\usepackage{graphicx}
+\usepackage{listings}
+\lstset{escapechar={|}}
+\lstset{escapeinside={(*@}{@*)}}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{csquotes}
+\lstset{
+  % language=C++,
+  showstringspaces=false,
+  basicstyle={\small\ttfamily},
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{dkgreen},
+}
+\usepackage[colorlinks,urlcolor={blue}]{hyperref}
+%\setlength{\parskip}{1em}
+\usepackage{parskip}
+\usepackage{indentfirst}
+\setlength{\droptitle}{-4em}
+\usepackage{soul}
+\usepackage{xcolor}
+\definecolor{darkgreen}{rgb}{0.0, 0.5, 0.0}
+\lstdefinestyle{base}{
+  basicstyle={\textcolor{darkgreen}\small\ttfamily},
+  showstringspaces=false,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{dkgreen},
+}
+\usepackage{makecell}
+\usepackage{floatrow}
+
+% \usepackage{concmath}
+% \usepackage[T1]{fontenc}
+% ********************************* HEADERS ***********************************
+\floatsetup[table]{capposition=top}
+
+\begin{document}
+\title{\textbf{Remove return type deduction in \texttt{std::apply}}}
+\author{
+  Aaryaman Sagar\\
+  \href{mailto:aary@meta.com}{\texttt{aary@meta.com}}
+  \and
+  Eric Niebler\\
+  \href{mailto:eniebler@nvidia.com}{\texttt{eniebler@nvidia.com}}
+}
+\date{February 26, 2024 \\ Document number: P1317R1 \\ Library Evolution Working Group}
+\maketitle
+
+\section{Introduction}
+
+\begin{lstlisting}
+#include <tuple>
+
+template <class Func, class Tuple>
+concept applicable =
+  requires(Func&& func, Tuple&& args) {
+    std::apply(std::forward<Func>(func), std::forward<Tuple>(args));
+  };
+
+int main() {
+  auto func = [](){};
+  auto args = std::make_tuple(1);
+
+  static_assert(!applicable<decltype(func), decltype(args)>);
+}
+\end{lstlisting}
+
+The code above should be well formed.  However, since \texttt{std::apply} uses
+return type deduction to deduce the return type, we get a hard error as the
+substitution is outside the immediate context of the template instantiation.
+
+This paper proposes a new public trait instead of \texttt{decltype(auto)} in
+the return type of of \texttt{std::apply}
+
+\section{Impact on the standard}
+This proposal is a pure library extension.
+
+\section{\texttt{std::apply\_result}}
+\texttt{std::apply\_result} (and the corresponding alias
+\texttt{std::apply\_result\_t}) is the proposed trait that should be used in
+the return type of \texttt{std::apply}.  With the new declaration being:
+
+\begin{lstlisting}
+template <class F, class Tuple>
+constexpr std::apply_result_t<F, Tuple> apply(F&& f, Tuple&& t);
+\end{lstlisting}
+
+This fixes hard errors originating from code that tries to employ commonly-used
+SFINAE patterns with \texttt{std::apply} that could have otherwise been
+well-formed. It is backwards compatible with well-formed usecases of
+\texttt{std::apply}
+
+\section{Implementation}
+\texttt{std::apply\_result} can be defined using the existing
+\texttt{std::invoke\_result} trait to avoid duplication in implementations
+
+\begin{lstlisting}
+namespace std {
+  // exposition only
+  template <size_t I, class T>
+    using (*@\textit{element-at}@*) = decltype(std::get<I>(declval<T>()));
+
+  // exposition only
+  template <class F, class T, std::size_t... I>
+  constexpr auto (*@\textit{apply-impl}@*)(F&& f, T&& t, std::index_sequence<I...>)
+      noexcept(is_nothrow_invocable_v<F, (*@\textit{element-at}@*)<I, T>...>)
+      -> invoke_result_t<F, (*@\textit{element-at}@*)<I, T>...> {
+    return invoke(std::forward<F>(f), std::get<I>(std::forward<T>(t))...);
+  }
+
+  template <class F, class Tuple>
+  using apply_result_t = decltype((*@\textit{apply-impl}@*)(
+      declval<F>(),
+      declval<Tuple>(),
+      make_index_sequence<tuple_size_v<remove_reference_t<Tuple>>>()));
+
+  template <class F, class Tuple>
+  struct (*@\textit{apply-result-impl}@*) {}; // exposition only
+
+  template <class F, class Tuple>
+    requires requires { typename apply_result_t<F, Tuple>; }
+  struct (*@\textit{apply-result-impl}@*)<F, Tuple> {
+    using type = std::apply_result_t<F, Tuple>;
+  };
+
+  template <class F, class Tuple>
+  struct apply_result : (*@\textit{apply-result-impl}@*)<F, Tuple> {};
+ }
+\end{lstlisting}
+
+\section{Proposed Wording}
+
+\textcolor{blue}{[\textit{Editorial note:} Add the following to the listing in [meta.type.synop]. \textit{--- end note}]}
+
+\subsection{21.3.3 [meta.type.synop]}
+\begin{lstlisting}[style=base]
+(*@\textit{// all freestanding}@*)
+namespace std {
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+
+  (*@\textit{// 21.3.7, type relations}@*)
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+  template<class Fn, class... ArgTypes> struct is_invocable;
+  template<class R, class Fn, class... ArgTypes> struct is_invocable_r;
+
+  template<class Fn, class... ArgTypes> struct is_nothrow_invocable;
+  template<class R, class Fn, class... ArgTypes> struct is_nothrow_invocable_r;
+
+  (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>\ struct is\_applicable;}}@*)
+  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>\ struct is\_applicable\_r;}}@*)
+
+  (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>\ struct is\_nothrow\_applicable;}}@*)
+  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>\ struct is\_nothrow\_applicable\_r;}}@*)
+  
+  (*@\textit{// 21.3.8.2, const-volatile modifications}@*)
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+
+  (*@\textit{// 21.3.8.7, other transformations}@*)
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+  template<class T> struct underlying_type;
+  template<class Fn, class... ArgTypes> struct invoke_result;
+  (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>\ struct apply\_result;}}@*)
+  template<class T> struct unwrap_reference;
+  template<class T> struct unwrap_ref_decay;
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+  template<class Fn, class... ArgTypes>
+    using invoke_result_t = typename invoke_result<Fn, ArgTypes...>::type;
+  (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>}}@*)
+    (*@\textcolor{darkgreen}{\texttt{using apply\_result\_t = typename apply\_result<Fn, Tuple>::type;}}@*)
+  template<class T>
+    using unwrap_reference_t = typename unwrap_reference<T>::type;
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+
+  (*@\textit{// 21.3.7, type relations}@*)
+  (*@\textcolor{blue}{... as before...}@*)
+  template<class R, class Fn, class... ArgTypes>
+    constexpr bool is_nothrow_invocable_r_v
+      = is_nothrow_invocable_r<R, Fn, ArgTypes...>::value;
+  (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>}}@*)
+    (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_applicable\_v = is\_applicable<Fn, Tuple>::value;}}@*)
+  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>}}@*)
+    (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_applicable\_r\_v = is\_applicable\_r<R, Fn, Tuple>::value;}}@*)
+  (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>}}@*)
+    (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_nothrow\_applicable\_v = is\_nothrow\_applicable<Fn, Tuple>::value;}}@*)
+  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>}}@*)
+    (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_nothrow\_applicable\_r\_v}}@*)
+      (*@\textcolor{darkgreen}{\texttt{= is\_nothrow\_applicable\_r<R, Fn, Tuple>::value;}}@*)
+
+  (*@\textit{// 21.3.9, logical operator traits}@*)
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+}
+\end{lstlisting}
+
+
+\textcolor{blue}{[\textit{Editorial note:} Change [meta.rel] as follows. \textit{--- end note}]}
+
+\begin{enumerate}
+\item The templates specified in Table 49 may be used to query
+      relationships between types at compile time.
+
+\item Each of these templates shall be a \textit{Cpp17BinaryTypeTrait}
+      [meta.rqmts] with a base characteristic of \texttt{true\_type} if
+      the corresponding condition is \texttt{true}, otherwise
+      \texttt{false\_type}.
+
+\begin{color}{darkgreen}
+\item Let \texttt{\textit{ELEMS-OF}(T)} be the parameter pack
+      \texttt{std::get<\textit{N}>(declval<T>())}, where
+      \texttt{\textit{N}} is the pack of \texttt{size\_t}
+      template arguments of the specialization of
+      \texttt{index\_sequence} denoted by
+      \texttt{make\_index\_sequence<tuple\_size\_t<T>\ >}.
+\end{color}
+\end{enumerate}
+
+\textcolor{blue}{[\textit{Editorial note:} At the end of Table 49, add the following. \textit{--- end note}]}
+  
+\begin{center}
+  Table 49: Type relationship predicates
+  \begin{tabular}[t]{ | p{6cm} p{7cm} p{5cm} | }
+    \hline
+    Template & Condition & Comments \\ 
+    \hline\hline
+    & ... as before ... & \\
+    \hline
+    \makecell[l]{\texttt{template<class R, class Fn,} \\
+              \texttt{\ \ \ \ \ \ \ \ \ class... ArgTypes>} \\
+              \texttt{struct is\_nothrow\_invocable\_r;}} &
+    \makecell[l]{\texttt{is\_invocable\_r\_v<R, Fn, ArgTypes...>} \\
+              is \texttt{true} and the expression \texttt{\textit{INVOKE}<R>(}\\
+              \texttt{declval<Fn>(), declval<ArgTypes>()...)} \\
+              is known not to throw any exceptions \\
+              ([expr.unary.noexcept]).} & 
+    \makecell[l]{\texttt{Fn}, \texttt{R}, and all types in the \\
+              template parameter pack \\
+              \texttt{ArgTypes} shall be \\
+              complete types, \texttt{\textit{cv} void}, or \\
+              arrays of unknown bound.} \\
+    \hline
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{template<class Fn,} \\
+                \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
+                \texttt{struct is\_applicable;}}} &
+    \textcolor{darkgreen}{
+      \makecell[l]{The expression \texttt{\textit{INVOKE}(declval<Fn>(),} \\
+                \texttt{\textit{ELEMS-OF}(Tuple)...)} is well-formed \\
+                when treated as an unevaluated operand.}} &
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{Fn} and \texttt{Tuple} shall be complete \\
+                    types, \texttt{\textit{cv} void}, or arrays of \\
+                    unknown bound.}} \\
+    \hline
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{template<class R, class Fn,} \\
+                \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
+                \texttt{struct is\_applicable\_r;}}} &
+    \textcolor{darkgreen}{
+      \makecell[l]{The expression \texttt{\textit{INVOKE}<R>(}\\
+                \texttt{declval<Fn>(), \textit{ELEMS-OF}(Tuple)...)} is \\
+                well-formed when treated as an\\
+                unevaluated operand.}} & 
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{Fn}, \texttt{R}, and \texttt{Tuple} shall be \\
+                complete types, \texttt{\textit{cv} void}, or \\
+                arrays of unknown bound.}} \\
+    \hline
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{template<class Fn,} \\
+                \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
+                \texttt{struct is\_nothrow\_applicable;}}} &
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{is\_applicable\_v<Fn, Tuple>} is \texttt{true} \\
+                and the expression \texttt{\textit{INVOKE}(declval<Fn>(),} \\
+                \texttt{\textit{ELEMS-OF}(Tuple)...)} is known not to throw \\
+                any exceptions ([expr.unary.noexcept]).}} &
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{Fn} and \texttt{Tuple} shall be complete \\
+                    types, \texttt{\textit{cv} void}, or arrays of \\
+                    unknown bound.}} \\
+    \hline
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{template<class R, class Fn,} \\
+                \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
+                \texttt{struct is\_nothrow\_applicable\_r;}}} &
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{is\_applicable\_r\_v<R, Fn, Tuple>} is \texttt{true} \\
+                and the expression \texttt{\textit{INVOKE}<R>(}\\
+                \texttt{declval<Fn>(), \textit{ELEMS-OF}(Tuple)...)} is \\
+                known not to throw any exceptions.}} & 
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{Fn}, \texttt{R}, and \texttt{Tuple} shall be \\
+                complete types, \texttt{\textit{cv} void}, or \\
+                arrays of unknown bound.}} \\
+    \hline
+  \end{tabular}
+\end{center}
+
+\textcolor{blue}{[\textit{Editorial note:} Change [meta.trans.other] as follows. \textit{--- end note}]}
+
+\subsection{21.3.8.7 Other transformations [meta.trans.other]}
+
+\begin{enumerate}
+\item The templates specified in Table 55 perform other modifications of a type.
+\end{enumerate}
+
+\textcolor{blue}{[\textit{Editorial note:} Add the following to Table 55. \textit{--- end note}]}
+  
+\begin{center}
+  Table 55 — Other transformations [tab:meta.trans.other]
+  \begin{tabular}[t]{ | p{6cm} p{12cm} | }
+    \hline
+    Template & Comments \\ 
+    \hline\hline
+    & \textcolor{blue}{\textit{... as before ...}} \\
+    \hline
+    \makecell[l]{\texttt{template<class Fn} \\
+                 \texttt{\ \ \ \ \ \ \ \ \ class... ArgTypes>} \\
+                 \texttt{struct invoke\_result;}} &
+    \makecell[l]{If the expression \texttt{\textit{INVOKE}(declval<Fn>(),} \\
+                 \texttt{declval<ArgTypes>()...)} (22.10.4) is well-formed when treated as \\
+                 an unevaluated operand (7.2.3), the member typedef \texttt{type} denotes \\
+                 the type \texttt{decltype(\textit{INVOKE}(declval<Fn>(),} \\
+                 \texttt{declval<ArgTypes>()...))}; otherwise, there shall be no member \\
+                 \texttt{type}. Access checking is performed as if in a context unrelated to \texttt{Fn} \\
+                 and \texttt{ArgTypes}. Only the validity of the immediate context of the \\
+                 expression is considered. \\
+                 $[$\textit{Note 2}: The compilation of the expression can result in side effects such as \\
+                 the instantiation of class template specializations and function template \\
+                 specializations, the generation of implicitly-defined functions, and so on. \\
+                 Such side effects are not in the ``immediate context'' and can result in the \\
+                 program being ill-formed. --- \textit{end note}$]$ \\
+                 \textit{Preconditions}: \texttt{Fn} and all types in the template parameter pack \\
+                 \texttt{ArgTypes} are complete types, \texttt{\textit{cv} void}, or arrays of unknown bound.
+                 } \\
+    \hline
+    \textcolor{darkgreen}{
+      \makecell[l]{\texttt{template<class Fn} \\
+                  \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
+                  \texttt{struct apply\_result;}}} &
+    \textcolor{darkgreen}{
+      \makecell[l]{If the expression \texttt{\textit{INVOKE}(declval<Fn>(), \textit{ELEMS-OF}(Tuple)...)} \\
+                  (22.10.4) is well-formed when treated as \\
+                  an unevaluated operand (7.2.3), the member typedef \texttt{type} denotes \\
+                  the type \texttt{decltype(\textit{INVOKE}(declval<Fn>(),} \\
+                  \texttt{\textit{ELEMS-OF}(Tuple)...))}; otherwise, there shall be no member \\
+                  \texttt{type}. Access checking is performed as if in a context unrelated to \texttt{Fn} \\
+                  and \texttt{Tuple}. Only the validity of the immediate context of the \\
+                  expression is considered. \\
+                  $[$\textit{Note 3}: The compilation of the expression can result in side effects such as \\
+                  the instantiation of class template specializations and function template \\
+                  specializations, the generation of implicitly-defined functions, and so on. \\
+                  Such side effects are not in the ``immediate context'' and can result in the \\
+                  program being ill-formed. --- \textit{end note}$]$ \\
+                  \textit{Preconditions}: \texttt{Fn} and \texttt{Tuple} are complete types, \texttt{\textit{cv} void}, or arrays\\
+                  of unknown bound.}} \\
+    \hline
+    \makecell[l]{\texttt{template<class T>} \\
+                 \texttt{struct unwrap\_reference;}} &
+    \makecell[l]{If \texttt{T} is a specialization \texttt{reference\_wrapper<X>} for some type \texttt{X}, the \\
+                 member typedef type of \texttt{unwrap\_reference<T>} denotes \texttt{X\&}, \\
+                 otherwise type denotes \texttt{T}.} \\
+    \hline
+    & \textcolor{blue}{\textit{... as before ...}} \\
+    \hline
+  \end{tabular}
+\end{center}
+
+
+\textcolor{blue}{[\textit{Editorial note:} Change the listing in [tuple.syn] as follows. \textit{--- end note}]}
+
+\subsection{Section 23.5.2 (\texttt{[tuple.syn]})}
+\begin{lstlisting}[style=base]
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+
+  template<(*@\textit{tuple-like}@*)... Tuples>
+    constexpr tuple<CTypes...> tuple_cat(Tuples&&...);
+
+  (*@\textit{// 23.5.3.5, calling a function with a tuple of arguments}@*)
+  template<class F, (*@\textit{tuple-like}@*) Tuple>
+    constexpr (*@\textcolor{red}{\st{decltype(auto)}}\textcolor{darkgreen}{\texttt{apply\_result\_t<F, Tuple>}}@*) apply(F&& f, Tuple&& t)
+      noexcept((*@\textcolor{red}{\st{\textit{see below}}}\textcolor{darkgreen}{\texttt{is\_nothrow\_applicable\_v<F, Tuple>}}@*));
+
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+\end{lstlisting}
+
+\textcolor{blue}{[\textit{Editorial note:} Change [tuple.apply] as follows. \textit{--- end note}]}
+
+\subsection{22.4.6. Calling a function with a \texttt{tuple} of arguments [tuple.apply]}
+\begin{lstlisting}
+template<class F, (*@\textit{tuple-like}@*) Tuple>
+  constexpr (*@\textcolor{red}{\st{decltype(auto)}}\textcolor{darkgreen}{\texttt{apply\_result\_t<F, Tuple>}}@*) apply(F&& f, Tuple&& t)
+    noexcept((*@\textcolor{red}{\st{\textit{see below}}}\textcolor{darkgreen}{\texttt{is\_nothrow\_applicable\_v<F, Tuple>}}@*));
+\end{lstlisting}
+
+\begin{enumerate}
+\item \textit{Effects:} Given the exposition-only function template:
+
+\begin{lstlisting}[style=base]
+namespace std {
+  template<class F, (*@\textit{tuple-like}@*) Tuple, size_t... I>
+  constexpr decltype(auto) (*@\textit{apply-impl}@*)(F&& f, T&& t, index_sequence<I...>) {
+                                                                  (*@\textit{// exposition only}@*)
+    return (*@\textit{INVOKE}@*)(std::forward<F>(f), get<I>(std::forward<T>(t))...);
+                                                                  (*@\textit{// see [func.require]}@*)
+  }
+}
+\end{lstlisting}
+
+Equivalent to:
+
+\begin{lstlisting}[style=base]
+  return (*@\textit{apply-impl}@*)(std::forward<F>(f), std::forward<Tuple>(t),
+                  make_index_sequence<tuple_size<remove_reference_t<Tuple>>>{});
+\end{lstlisting}
+
+\begin{color}{red}
+\item[\st{2.}] \sout{\textit{Remarks:} Let \texttt{I} be the pack
+      \texttt{0, 1, ... (tuple\_size\_v<remove\_reference\_t<Tuple>{}> - 1)}. The
+      exception specification is equivalent to:}
+
+\begin{lstlisting}[style=base]
+  (*@\sout{noexcept(invoke(std::forward<F>(f), get<I>(std::forward<Tuple>(t))...))}@*)
+\end{lstlisting}
+\end{color}
+\end{enumerate}
+
+
+\end{document}
