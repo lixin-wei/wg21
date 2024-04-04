@@ -66,7 +66,7 @@
   Eric Niebler\\
   \href{mailto:eniebler@nvidia.com}{\texttt{eniebler@nvidia.com}}
 }
-\date{February 26, 2024 \\ Document number: P1317R1 \\ Library Evolution Working Group}
+\date{April 3, 2024 \\ Document number: P1317R1 \\ Library Evolution Working Group}
 \maketitle
 
 \section{Introduction}
@@ -121,14 +121,14 @@ well-formed. It is backwards compatible with well-formed usecases of
 namespace std {
   // exposition only
   template <size_t I, class T>
-    using (*@\textit{element-at}@*) = decltype(std::get<I>(declval<T>()));
+    using (*@\textit{element-at}@*) = decltype(get<I>(declval<T>()));
 
   // exposition only
   template <class F, class T, std::size_t... I>
   constexpr auto (*@\textit{apply-impl}@*)(F&& f, T&& t, std::index_sequence<I...>)
       noexcept(is_nothrow_invocable_v<F, (*@\textit{element-at}@*)<I, T>...>)
       -> invoke_result_t<F, (*@\textit{element-at}@*)<I, T>...> {
-    return invoke(std::forward<F>(f), std::get<I>(std::forward<T>(t))...);
+    return invoke(std::forward<F>(f), get<I>(std::forward<T>(t))...);
   }
 
   template <class F, class Tuple>
@@ -153,9 +153,80 @@ namespace std {
 
 \section{Proposed Wording}
 
+\textcolor{blue}{[\textit{Editorial note:} Insert the following declarations
+to the listing in [concepts.syn]. \textit{--- end note}]}
+
+\subsection*{18.3 Header \texttt{<concepts>} synopsis [concepts.syn]}
+\begin{lstlisting}[style=base]
+(*@\textit{// all freestanding}@*)
+namespace std {
+    (*@\textcolor{blue}{\textit{[...]}}@*)
+
+  (*@\textit{// 18.7.7, concept strict\_weak\_order}@*)
+  template<class R, class T, class U>
+    concept strict_weak_order = (*@\textit{see below}@*);
+
+  (*@\textcolor{darkgreen}{\texttt{\textit{// 18.7.8, concept applicable}}}@*)
+  (*@\textcolor{darkgreen}{\texttt{template<class F, class Tuple>}}@*)
+    (*@\textcolor{darkgreen}{\texttt{concept applicable = \textit{see below};}}@*)
+
+  (*@\textcolor{darkgreen}{\texttt{\textit{// 18.7.9, concept regular\_applicable}}}@*)
+  (*@\textcolor{darkgreen}{\texttt{template<class F, class Tuple>}}@*)
+    (*@\textcolor{darkgreen}{\texttt{concept regular\_applicable = \textit{see below};}}@*)
+}
+\end{lstlisting}
+
+\textcolor{blue}{[\textit{Editorial note:} Add the following two subsections at
+the end of [concepts.callable], right after [concept.strictweakorder].
+\textit{--- end note}]}
+
+\begin{color}{darkgreen}
+\subsection*{18.7.8 Concept \texttt{applicable} [concept.applicable]}
+\begin{itemize}
+\item The \texttt{applicable} concept specifies a relationship between a
+callable type ([func.def]) \texttt{F} and a \texttt{\textit{tuple-like}} type ([tuple.like])
+\texttt{Tuple} that can be evaluated by the library function \texttt{apply} ([tuple.apply]).
+
+\begin{lstlisting}[style=base]
+  template<class F, class Tuple>
+    concept applicable = requires(F&& f, Tuple&& tup) {
+      apply(std::forward<F>(f), std::forward<Tuple>(tup)); (*@\textit{// not required to be}@*)
+                                                           (*@\textit{// equality-preserving}@*)
+    };
+\end{lstlisting}
+
+\item {[}\textit{Example 1 }: A function that generates random numbers can model
+\texttt{applicable}, since the \texttt{apply} function call expression is not required to be
+equality-preserving ([concepts.equality]). \textit{--- end example}{]}
+\end{itemize}
+
+
+\subsection*{18.7.9 Concept \texttt{regular\_applicable} [concept.regularapplicable]}
+
+\begin{lstlisting}[style=base]
+template<class F, class Tuple>
+  concept regular_applicable = applicable<F, Tuple>;
+\end{lstlisting}
+
+\begin{itemize}
+\item The \texttt{apply} function call expression shall be equality-preserving
+  ([concepts.equality]) and shall not modify the function object or the arguments.
+
+  {[}\textit{Note 1}: This requirement supersedes the annotation in the definition
+  of \texttt{applicable}. \textit{--- end note}{]}
+
+\item {[}\textit{Example 1}: A random number generator does not model
+  \texttt{regular\_applicable}. \textit{--- end example}{]}
+
+\item {[}\textit{Note 2}: The distinction between \texttt{applicable} and
+  \texttt{regular\_applicable} is purely semantic. \textit{--- end note}{]}
+\end{itemize}
+\end{color}
+
+
 \textcolor{blue}{[\textit{Editorial note:} Add the following to the listing in [meta.type.synop]. \textit{--- end note}]}
 
-\subsection{21.3.3 [meta.type.synop]}
+\subsection*{21.3.3 [meta.type.synop]}
 \begin{lstlisting}[style=base]
 (*@\textit{// all freestanding}@*)
 namespace std {
@@ -228,11 +299,11 @@ namespace std {
 
 \begin{color}{darkgreen}
 \item Let \texttt{\textit{ELEMS-OF}(T)} be the parameter pack
-      \texttt{std::get<\textit{N}>(declval<T>())}, where
+      \texttt{get<\textit{N}>(declval<T>())}, where
       \texttt{\textit{N}} is the pack of \texttt{size\_t}
       template arguments of the specialization of
       \texttt{index\_sequence} denoted by
-      \texttt{make\_index\_sequence<tuple\_size\_t<T>\ >}.
+      \texttt{make\_index\_sequence<tuple\_size\_v<T>\ >}.
 \end{color}
 \end{enumerate}
 
@@ -320,7 +391,7 @@ namespace std {
 
 \textcolor{blue}{[\textit{Editorial note:} Change [meta.trans.other] as follows. \textit{--- end note}]}
 
-\subsection{21.3.8.7 Other transformations [meta.trans.other]}
+\subsection*{21.3.8.7 Other transformations [meta.trans.other]}
 
 \begin{enumerate}
 \item The templates specified in Table 55 perform other modifications of a type.
@@ -391,7 +462,7 @@ namespace std {
 
 \textcolor{blue}{[\textit{Editorial note:} Change the listing in [tuple.syn] as follows. \textit{--- end note}]}
 
-\subsection{Section 23.5.2 (\texttt{[tuple.syn]})}
+\subsection*{Section 23.5.2 (\texttt{[tuple.syn]})}
 \begin{lstlisting}[style=base]
     (*@\textcolor{blue}{\textit{[...]}}@*)
 
@@ -408,7 +479,7 @@ namespace std {
 
 \textcolor{blue}{[\textit{Editorial note:} Change [tuple.apply] as follows. \textit{--- end note}]}
 
-\subsection{22.4.6. Calling a function with a \texttt{tuple} of arguments [tuple.apply]}
+\subsection*{22.4.6. Calling a function with a \texttt{tuple} of arguments [tuple.apply]}
 \begin{lstlisting}
 template<class F, (*@\textit{tuple-like}@*) Tuple>
   constexpr (*@\textcolor{red}{\st{decltype(auto)}}\textcolor{darkgreen}{\texttt{apply\_result\_t<F, Tuple>}}@*) apply(F&& f, Tuple&& t)
@@ -433,7 +504,7 @@ Equivalent to:
 
 \begin{lstlisting}[style=base]
   return (*@\textit{apply-impl}@*)(std::forward<F>(f), std::forward<Tuple>(t),
-                  make_index_sequence<tuple_size<remove_reference_t<Tuple>>>{});
+                  make_index_sequence<tuple_size_v<remove_reference_t<Tuple>>>{});
 \end{lstlisting}
 
 \begin{color}{red}
