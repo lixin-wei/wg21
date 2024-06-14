@@ -1,0 +1,10 @@
+{
+  "title": "Improving diagnostics for sender expressions",
+  "document": "P3164R1",
+  "date": "July 14, 2024",
+  "author": "[Eric Niebler](mailto:eric.niebler@gmail.com)",
+  "source": "[Github](https://github.com/ericniebler/wg21/blob/main/P3164/P3164.md)",
+  "issues": "[Github](https://github.com/ericniebler/wg21/issues)",
+  "project": "ISO/IEC JTC1/SC22/WG21 14882: Programming Language — C++",
+  "audience": "Library Evolution Working Group"
+}

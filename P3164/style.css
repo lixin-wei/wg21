@@ -1,0 +1,93 @@
+body {
+  max-width: 1000px;
+  text-align: justify;
+  margin: auto
+}
+
+h1.title {
+  text-align: center
+}
+
+p {
+  text-align: justify
+}
+
+li {
+  text-align: justify
+}
+
+blockquote.note {
+  background-color: #E0E0E0;
+  padding-left: 15px;
+  padding-right: 15px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+span.note:before {
+  content: "[Note: ";
+  font-style: italic;
+}
+
+span.note:after {
+  content: " -- end note]";
+  font-style: italic;
+}
+
+span.ednote:before {
+  content: "[Editorial note: ";
+  font-style: italic;
+}
+
+span.ednote:after {
+  content: " -- end note]";
+  font-style: italic;
+}
+
+span.ednote,
+span.ednote * {
+  color: blue !important;
+  margin-top: 0em;
+  margin-bottom: 0em;
+}
+
+ins,
+ins * {
+  color: #00A000 !important
+}
+
+del,
+del * {
+  color: #A00000 !important
+}
+
+div.ins,
+div.ins * {
+  color: #00A000 !important;
+  text-decoration-line: none;
+}
+
+div.del,
+div.del * {
+  color: #A00000 !important;
+  text-decoration-line: none;
+}
+
+dfn {
+  font-style: italic;
+  font-weight: bold;
+}
+
+code:not(sourceCode) {
+  white-space: normal;
+  font-size: 80% !important;
+}
+
+ins>code:not(sourceCode) {
+  white-space: normal;
+  font-size: 80% !important;
+}
+
+div.sourceCode {
+  margin-left: 20pt !important;
+}
