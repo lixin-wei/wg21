@@ -103,12 +103,13 @@ suspended and later resumed. One of the key applications for this new feature is
 to make it easier to write asynchronous code. However, C++20 does not include
 any concrete coroutine types that directly support writing asynchronous code.
 
-This paper proposes adding a new type, `std::lazy<T>`, to the standard library
-to enable creation and composition of coroutines representing asynchronous
-computation.
+This paper proposes adding a new type, `std::basic_task<T, Context>`, and an
+alias template `std::task<T>` to the standard library to enable creation and
+composition of coroutines representing asynchronous computation.
 
-<span class="ednote">SG1 would like to keep the name `std::task` for something
-else. SG1 requested to pick a different name. LEWG picked `lazy`.</span>
+<span class="ednote">The last time this paper was considered, SG1 wanted to keep
+the name `std::task` available for something else. SG1 requested to pick a
+different name. LEWG picked `lazy`.</span>
 
 ```c++
   #include <experimental/lazy>
@@ -296,10 +297,12 @@ Consider the following code fragment:
     result += v;
 ```
 
-Let's say that `async_read` returns a future. That future cannot resume directly the coroutine that is awaiting on it as it will, in effect, transform the loop into unbounded recursion.
+Let's say that `async_read` returns a future. That future cannot resume directly
+the coroutine that is awaiting on it as it will, in effect, transform the loop
+into unbounded recursion.
 
 On the other hand, coroutines have built-in support for symmetric coroutine to
-coroutine transfer[[p0913r0]]. Since lazy object can only be created by a
+coroutine transfer ([[p0913r0]]). Since lazy object can only be created by a
 coroutine and the only way to get the result from a coroutine is by awaiting on
 it from another coroutine, the transfer of control from completing coroutine to
 awaiting coroutine is done in symmetric fashion, thus eliminating the need for
