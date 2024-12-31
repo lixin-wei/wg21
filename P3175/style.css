@@ -42,11 +42,11 @@ span.ednote, span.ednote * {
 ins, ins * {color:#00A000 !important}
 del, del * {color:#A00000 !important}
 div.ins, div.ins * {
-	color:#00A000 !important;
+	color:#00A000;
 	text-decoration-line: none;
 }
 div.del, div.del * {
-	color:#A00000 !important;
+	color:#A00000;
 	text-decoration-line: none;
 }
 dfn {
