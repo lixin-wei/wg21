@@ -1,7 +1,7 @@
 {
   "title": "Improving diagnostics for sender expressions",
-  "document": "P3164R1",
-  "date": "July 14, 2024",
+  "document": "P3164R2",
+  "date": "June 24, 2024",
   "author": "[Eric Niebler](mailto:eric.niebler@gmail.com)",
   "source": "[Github](https://github.com/ericniebler/wg21/blob/main/P3164/P3164.md)",
   "issues": "[Github](https://github.com/ericniebler/wg21/issues)",
