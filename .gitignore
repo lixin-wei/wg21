@@ -4,3 +4,9 @@ plantuml-images/
 build/
 .idea
 .vscode
+*/*.html
+*/*.aux
+*/*.dvi
+*/*.log
+*/*.out
+*/*.pdf
