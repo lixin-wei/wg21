@@ -1,10 +1,10 @@
 {
   "title": "Early Diagnostics for Sender Expressions",
-  "document": "P3164R3",
-  "date": "Jan 9, 2025",
+  "document": "P3164R4",
+  "date": "2025-02-13",
   "author": "[Eric Niebler](mailto:eric.niebler@gmail.com)",
   "source": "[Github](https://github.com/ericniebler/wg21/blob/main/P3164/P3164.md)",
   "issues": "[Github](https://github.com/ericniebler/wg21/issues)",
   "project": "ISO/IEC JTC1/SC22/WG21 14882: Programming Language — C++",
-  "audience": "Library Evolution Working Group"
+  "audience": "Library Working Group"
 }
