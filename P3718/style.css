@@ -1,0 +1,5 @@
+/* Change the color of code comments from green to grey */
+/* so as not to be confused with (green) inserted text. */
+code span.co {
+  color: #666666;
+}
