@@ -1,7 +1,7 @@
 P1317R2.pdf: P1317R2.tex
 	mkdir -p generated
 	pdflatex -interaction=nonstopmode -halt-on-error -file-line-error P1317R2.tex
-	cp P1317R2.pdf generated/P1317R2.pdf
+	mv P1317R2.pdf generated/P1317R2.pdf
 
 .PHONY: clean
 clean:
