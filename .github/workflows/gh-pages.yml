@@ -42,29 +42,44 @@ jobs:
           sudo apt update
           sudo apt install -y texlive-xetex
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
+          path: wg21
+          persist-credentials: false
           submodules: true
 
       - name: install dependencies
         run: |
-          make -C P2999 update
+          make -C P1317 update
+          make -C P3557 update
+          make -C P3718 update
+
+      - name: build pdf
+        run: |
+          make -C P1319
 
       - name: build html
         run: |
-          make -C P2999 html
-
-      # - name: build pdf
-      #   run: |
-      #     make -C P2999 pdf
+          make -C P3557 html
+          make -C P3718 html
 
       - name: Setup Pages
-        uses: actions/configure-pages@v2
+        uses: actions/configure-pages@v5
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+      - name: Upload P1317 artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: P2999/generated
+          path: P1317/generated
+
+      - name: Upload P3557 artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: P3557/generated
+
+      - name: Upload P3718 artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: P3718/generated
 
   deploy:
     environment:
@@ -75,4 +90,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4
