@@ -54,8 +54,7 @@ jobs:
 
       - name: Update wg21-mpark metadata
         run: |
-          make -C P3557 update
-          make -C P3718 update
+          make -C wg21-mpark update
 
       - name: Build pdf
         run: |
