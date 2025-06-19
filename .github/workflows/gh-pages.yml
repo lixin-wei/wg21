@@ -54,7 +54,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          make -C P1317 update
           make -C P3557 update
           make -C P3718 update
 
