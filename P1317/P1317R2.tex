@@ -66,7 +66,7 @@
   Eric Niebler\\
   \href{mailto:eniebler@nvidia.com}{\texttt{eniebler@nvidia.com}}
 }
-\date{April 3, 2024 \\ Document number: P1317R1 \\ Library Evolution Working Group}
+\date{June 16, 2025 \\ Document number: D1317R2 \\ Library Working Group}
 \maketitle
 
 \section{Introduction}
@@ -210,7 +210,8 @@ template<class F, class Tuple>
 
 \begin{itemize}
 \item The \texttt{apply} function call expression shall be equality-preserving
-  ([concepts.equality]) and shall not modify the function object or the arguments.
+  ([concepts.equality]) and shall not modify the function object or the elements
+  of the tuple.
 
   {[}\textit{Note 1}: This requirement supersedes the annotation in the definition
   of \texttt{applicable}. \textit{--- end note}{]}
@@ -241,10 +242,8 @@ namespace std {
   template<class R, class Fn, class... ArgTypes> struct is_nothrow_invocable_r;
 
   (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>\ struct is\_applicable;}}@*)
-  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>\ struct is\_applicable\_r;}}@*)
 
   (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>\ struct is\_nothrow\_applicable;}}@*)
-  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>\ struct is\_nothrow\_applicable\_r;}}@*)
   
   (*@\textit{// 21.3.8.2, const-volatile modifications}@*)
     (*@\textcolor{blue}{\textit{[...]}}@*)
@@ -272,13 +271,8 @@ namespace std {
       = is_nothrow_invocable_r<R, Fn, ArgTypes...>::value;
   (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>}}@*)
     (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_applicable\_v = is\_applicable<Fn, Tuple>::value;}}@*)
-  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>}}@*)
-    (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_applicable\_r\_v = is\_applicable\_r<R, Fn, Tuple>::value;}}@*)
   (*@\textcolor{darkgreen}{\texttt{template<class Fn, class Tuple>}}@*)
     (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_nothrow\_applicable\_v = is\_nothrow\_applicable<Fn, Tuple>::value;}}@*)
-  (*@\textcolor{darkgreen}{\texttt{template<class R, class Fn, class Tuple>}}@*)
-    (*@\textcolor{darkgreen}{\texttt{inline constexpr bool is\_nothrow\_applicable\_r\_v}}@*)
-      (*@\textcolor{darkgreen}{\texttt{= is\_nothrow\_applicable\_r<R, Fn, Tuple>::value;}}@*)
 
   (*@\textit{// 21.3.9, logical operator traits}@*)
     (*@\textcolor{blue}{\textit{[...]}}@*)
@@ -298,12 +292,11 @@ namespace std {
       \texttt{false\_type}.
 
 \begin{color}{darkgreen}
-\item Let \texttt{\textit{ELEMS-OF}(T)} be the parameter pack
-      \texttt{get<\textit{N}>(declval<T>())}, where
-      \texttt{\textit{N}} is the pack of \texttt{size\_t}
-      template arguments of the specialization of
-      \texttt{index\_sequence} denoted by
-      \texttt{make\_index\_sequence<tuple\_size\_v<T>\ >}.
+      \item Let \texttt{\textit{ELEMS-OF}(T)} be the parameter pack
+      \texttt{get<\textit{N}>(declval<T>())}, where \texttt{\textit{N}} is the pack of
+      \texttt{size\_t} template arguments of the specialization of \texttt{index\_sequence}
+      denoted by
+      \verb!make_index_sequence<tuple_size_v<remove_reference_t<T>>>!.
 \end{color}
 \end{enumerate}
 
@@ -336,27 +329,14 @@ namespace std {
                 \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
                 \texttt{struct is\_applicable;}}} &
     \textcolor{darkgreen}{
-      \makecell[l]{The expression \texttt{\textit{INVOKE}(declval<Fn>(),} \\
+      \makecell[l]{\texttt{\textit{tuple-like}<Tuple>} is \texttt{true} and \\
+                the expression \texttt{\textit{INVOKE}(declval<Fn>(),} \\
                 \texttt{\textit{ELEMS-OF}(Tuple)...)} is well-formed \\
                 when treated as an unevaluated operand.}} &
     \textcolor{darkgreen}{
       \makecell[l]{\texttt{Fn} and \texttt{Tuple} shall be complete \\
                     types, \texttt{\textit{cv} void}, or arrays of \\
                     unknown bound.}} \\
-    \hline
-    \textcolor{darkgreen}{
-      \makecell[l]{\texttt{template<class R, class Fn,} \\
-                \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
-                \texttt{struct is\_applicable\_r;}}} &
-    \textcolor{darkgreen}{
-      \makecell[l]{The expression \texttt{\textit{INVOKE}<R>(}\\
-                \texttt{declval<Fn>(), \textit{ELEMS-OF}(Tuple)...)} is \\
-                well-formed when treated as an\\
-                unevaluated operand.}} & 
-    \textcolor{darkgreen}{
-      \makecell[l]{\texttt{Fn}, \texttt{R}, and \texttt{Tuple} shall be \\
-                complete types, \texttt{\textit{cv} void}, or \\
-                arrays of unknown bound.}} \\
     \hline
     \textcolor{darkgreen}{
       \makecell[l]{\texttt{template<class Fn,} \\
@@ -371,20 +351,6 @@ namespace std {
       \makecell[l]{\texttt{Fn} and \texttt{Tuple} shall be complete \\
                     types, \texttt{\textit{cv} void}, or arrays of \\
                     unknown bound.}} \\
-    \hline
-    \textcolor{darkgreen}{
-      \makecell[l]{\texttt{template<class R, class Fn,} \\
-                \texttt{\ \ \ \ \ \ \ \ \ class Tuple>} \\
-                \texttt{struct is\_nothrow\_applicable\_r;}}} &
-    \textcolor{darkgreen}{
-      \makecell[l]{\texttt{is\_applicable\_r\_v<R, Fn, Tuple>} is \texttt{true} \\
-                and the expression \texttt{\textit{INVOKE}<R>(}\\
-                \texttt{declval<Fn>(), \textit{ELEMS-OF}(Tuple)...)} is \\
-                known not to throw any exceptions.}} & 
-    \textcolor{darkgreen}{
-      \makecell[l]{\texttt{Fn}, \texttt{R}, and \texttt{Tuple} shall be \\
-                complete types, \texttt{\textit{cv} void}, or \\
-                arrays of unknown bound.}} \\
     \hline
   \end{tabular}
 \end{center}
