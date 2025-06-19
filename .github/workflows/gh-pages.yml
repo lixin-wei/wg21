@@ -52,7 +52,7 @@ jobs:
           git apply ../wg21-mpark.patch
           popd
 
-      - name: Install dependencies
+      - name: Update wg21-mpark metadata
         run: |
           make -C P3557 update
           make -C P3718 update
@@ -66,23 +66,20 @@ jobs:
           make -C P3557 html
           make -C P3718 html
 
+      - name: Gather artifacts
+        run: |
+          mkdir -p generated
+          cp P1317/generated/*.pdf generated
+          cp P3557/generated/*.html generated
+          cp P3718/generated/*.html generated
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload P1317 artifact
+      - name: Upload artifacts
         uses: actions/upload-pages-artifact@v3
         with:
-          path: P1317/generated
-
-      - name: Upload P3557 artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: P3557/generated
-
-      - name: Upload P3718 artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: P3718/generated
+          path: generated
 
   deploy:
     environment:
