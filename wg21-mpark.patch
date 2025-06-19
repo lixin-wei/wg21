@@ -1,0 +1,13 @@
+diff --git a/data/filters/wg21.py b/data/filters/wg21.py
+index 779fac1..ad1e65c 100755
+--- a/data/filters/wg21.py
++++ b/data/filters/wg21.py
+@@ -334,7 +334,7 @@ def divspan(elem, doc):
+ 
+     if 'sref' in elem.classes and isinstance(elem, pf.Span):
+         target = pf.stringify(elem)
+-        number = stable_names.get(target)
++        number = stable_names.get(target.split('#')[0])
+         link = pf.Link(
+             pf.Str(f'[{target}]'),
+             url=f'https://wg21.link/{target}')

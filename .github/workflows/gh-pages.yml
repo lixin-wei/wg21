@@ -44,21 +44,25 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          path: wg21
-          persist-credentials: false
           submodules: true
 
-      - name: install dependencies
+      - name: Apply patches
+        run: |
+          pushd wg21-mpark
+          git apply ../wg21-mpark.patch
+          popd
+
+      - name: Install dependencies
         run: |
           make -C P1317 update
           make -C P3557 update
           make -C P3718 update
 
-      - name: build pdf
+      - name: Build pdf
         run: |
-          make -C P1319
+          make -C P1317
 
-      - name: build html
+      - name: Build html
         run: |
           make -C P3557 html
           make -C P3718 html
