@@ -65,7 +65,7 @@
   Eric Niebler\\
   \href{mailto:eniebler@nvidia.com}{\texttt{eniebler@nvidia.com}}
 }
-\date{June 16, 2025 \\ Document number: D1317R2 \\ Library Working Group}
+\date{June 19, 2025 \\ Document number: P1317R2 \\ Library Working Group}
 \maketitle
 
 \section{Introduction}
@@ -151,78 +151,6 @@ namespace std {
 \end{lstlisting}
 
 \section{Proposed Wording}
-
-\textcolor{blue}{[\textit{Editorial note:} Insert the following declarations
-to the listing in [concepts.syn]. \textit{--- end note}]}
-
-\subsection*{18.3 Header \texttt{<concepts>} synopsis [concepts.syn]}
-\begin{lstlisting}[style=base]
-(*@\textit{// all freestanding}@*)
-namespace std {
-    (*@\textcolor{blue}{\textit{[...]}}@*)
-
-  (*@\textit{// 18.7.7, concept strict\_weak\_order}@*)
-  template<class R, class T, class U>
-    concept strict_weak_order = (*@\textit{see below}@*);
-
-  (*@\textcolor{darkgreen}{\texttt{\textit{// 18.7.8, concept applicable}}}@*)
-  (*@\textcolor{darkgreen}{\texttt{template<class F, class Tuple>}}@*)
-    (*@\textcolor{darkgreen}{\texttt{concept applicable = \textit{see below};}}@*)
-
-  (*@\textcolor{darkgreen}{\texttt{\textit{// 18.7.9, concept regular\_applicable}}}@*)
-  (*@\textcolor{darkgreen}{\texttt{template<class F, class Tuple>}}@*)
-    (*@\textcolor{darkgreen}{\texttt{concept regular\_applicable = \textit{see below};}}@*)
-}
-\end{lstlisting}
-
-\textcolor{blue}{[\textit{Editorial note:} Add the following two subsections at
-the end of [concepts.callable], right after [concept.strictweakorder].
-\textit{--- end note}]}
-
-\begin{color}{darkgreen}
-\subsection*{18.7.8 Concept \texttt{applicable} [concept.applicable]}
-\begin{itemize}
-\item The \texttt{applicable} concept specifies a relationship between a
-callable type ([func.def]) \texttt{F} and a \texttt{\textit{tuple-like}} type ([tuple.like])
-\texttt{Tuple} that can be evaluated by the library function \texttt{apply} ([tuple.apply]).
-
-\begin{lstlisting}[style=base]
-  template<class F, class Tuple>
-    concept applicable = requires(F&& f, Tuple&& tup) {
-      apply(std::forward<F>(f), std::forward<Tuple>(tup)); (*@\textit{// not required to be}@*)
-                                                           (*@\textit{// equality-preserving}@*)
-    };
-\end{lstlisting}
-
-\item {[}\textit{Example 1 }: A function that generates random numbers can model
-\texttt{applicable}, since the \texttt{apply} function call expression is not required to be
-equality-preserving ([concepts.equality]). \textit{--- end example}{]}
-\end{itemize}
-
-
-\subsection*{18.7.9 Concept \texttt{regular\_applicable} [concept.regularapplicable]}
-
-\begin{lstlisting}[style=base]
-template<class F, class Tuple>
-  concept regular_applicable = applicable<F, Tuple>;
-\end{lstlisting}
-
-\begin{itemize}
-\item The \texttt{apply} function call expression shall be equality-preserving
-  ([concepts.equality]) and shall not modify the function object or the elements
-  of the tuple.
-
-  {[}\textit{Note 1}: This requirement supersedes the annotation in the definition
-  of \texttt{applicable}. \textit{--- end note}{]}
-
-\item {[}\textit{Example 1}: A random number generator does not model
-  \texttt{regular\_applicable}. \textit{--- end example}{]}
-
-\item {[}\textit{Note 2}: The distinction between \texttt{applicable} and
-  \texttt{regular\_applicable} is purely semantic. \textit{--- end note}{]}
-\end{itemize}
-\end{color}
-
 
 \textcolor{blue}{[\textit{Editorial note:} Add the following to the listing in [meta.type.synop]. \textit{--- end note}]}
 
