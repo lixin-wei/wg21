@@ -3,3 +3,24 @@
 code span.co {
   color: #666666;
 }
+
+/* Do the same for operators */
+code span.op {
+  color: #666666;
+}
+
+th div {
+  text-align: left !important;
+}
+
+.green-box {
+  border: 1px solid green; /* Sets a 1px solid green border */
+  padding-left: 1px;
+  padding-right: 2px;
+  background-color: #e0ffe0; /* adds a light green background */
+  display: inline-block;   /* Makes the div only as wide as its content */
+}
+
+table { border: none; }
+/*table { border-collapse: collapse; }*/
+tr { border-bottom: 1px solid; }
