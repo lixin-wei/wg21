@@ -29,3 +29,11 @@ table {
 tr {
   border-bottom: 1px solid;
 }
+
+blockquote {
+  background-color: #ffffff;
+}
+
+div.rm * {
+  text-decoration: line-through;
+}
