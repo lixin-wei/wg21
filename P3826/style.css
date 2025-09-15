@@ -37,3 +37,7 @@ blockquote {
 div.rm * {
   text-decoration: line-through;
 }
+
+.blue {
+  color:blue;font-style:italic;
+}
