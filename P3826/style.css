@@ -1,3 +1,13 @@
+
+p:has(> span.npnum) {
+	padding-left: 2.5em;
+}
+
+span.npnum {
+  position: absolute;
+  margin-left: -1.5em;
+}
+
 /* Change the color of code comments from green to grey */
 /* so as not to be confused with (green) inserted text. */
 code span.co {

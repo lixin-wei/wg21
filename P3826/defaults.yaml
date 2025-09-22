@@ -1,4 +1,2 @@
 css: ${.}/style.css
-filters:
-  - mermaid-filter
-from: markdown+yaml_metadata_block+latex_macros
+from: markdown+yaml_metadata_block
