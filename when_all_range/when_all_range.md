@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-In the above example, `when_all` doesn't work, because its signature is `when_all(ex::sender auto... senders)`
+In the above example, `when_all` doesn't work, because its signature is `when_all(ex::sender auto&&... senders)`
 which requires the number of senders to be known at compile time. We can't pass a dynamic container to it.
 
 ## Proposed Solution
@@ -47,15 +47,11 @@ To resolve this problem, this paper proposes to add a new sender adaptor algorit
 called `when_all_range` to the `std::execution` namespace, which accepts a `std::ranges::range` of senders.
 
 ```c++
-int main(int argc, char** argv) {
-  int runtime_known_number = std::atoi(argv[1]);
-  std::vector<MySender> senders;
-  for (int i = 0; i < runtime_known_number; ++i) {
-    senders.push_back(CreateAsyncWork());
-  }
-  
-  ex::when_all_range(senders); // proposed new adaptor
-}
+struct when_all_range_t {
+  // qualifiers omitted for simplicity
+  ex::sender auto operator()(std::ranges::range Range auto&& range);
+};
+inline constexpr when_all_range_t when_all_range{};
 ```
 
 Like `when_all`, `when_all_range` adapts all senders in the range into a sender that
@@ -65,8 +61,43 @@ senders' value result datums into a new `std::ranges::range` and pass it to its 
 
 Let's call the range passed to the value completion operation of the returned sender as `output range`.
 
-The output range should conform `std::ranges::random_access_range`.
+**The output range should conform `std::ranges::random_access_range`.**
 The i-th element in the output range should be the value result datum of the i-th sender(iteration order) in the input range.
+
+```c++
+using SenderType = decltype(ex::just(1));
+std::vector<SenderType> senders;
+for (int i = 0; i < 10; ++i) {
+  senders.emplace(ex::just(i));
+}
+ex::when_all_range(std::move(senders)) |
+ex::then([](std::ranges::random_access_range auto&& res) {
+  for (int i = 0; i < 10; ++i) {
+    // the result order should be the same as the input order
+    assert(res[i] == i);
+  }
+});
+```
+
+To emphasize, even though the input range is not a `std::ranges::random_access_range`, the output range should still conform `std::ranges::random_access_range`. Where the output order is the same as the input's iteration order.
+
+```c++
+using SenderType = decltype(ex::just(1));
+// assume we have a comparator for `ex::just(i)` which sorts them by `i`.
+std::set<SenderType> senders;
+for (int i = 0; i < 10; ++i) {
+  senders.emplace(ex::just(i));
+}
+
+// input range is not a `std::ranges::random_access_range` now
+ex::when_all_range(std::move(senders)) |
+ex::then([](std::ranges::random_access_range auto&& res) {
+  for (int i = 0; i < 10; ++i) {
+    // the result order should be the same as the input's iteration order
+    assert(res[i] == i);
+  }
+});
+```
 
 # Proposed Wording
 
